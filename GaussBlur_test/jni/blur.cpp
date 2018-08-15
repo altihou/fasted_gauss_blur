@@ -1,5 +1,7 @@
 #include <iostream>
 #include <cmath>
+#include <stdlib.h> // pulls in declaration of malloc, free
+#include <string.h> // pulls in declaration for strlen.
 
 #include <jni.h>
 #include <android/log.h>
@@ -20,11 +22,11 @@ extern "C" {
 //LOGD("jni %d:  %lf", i, amplitude[i]);
 void gaussBlur1(int* pix, int w, int h, int radius)
 {
-	float sigma =  1.0 * radius / 2.57;	//2.57 * sigam°ë¾¶Ö®ºó»ù±¾Ã»ÓĞ¹±Ï× ËùÒÔÈ¡sigmaÎª r / 2.57
+	float sigma =  1.0 * radius / 2.57;	//2.57 * sigamåŠå¾„ä¹‹ååŸºæœ¬æ²¡æœ‰è´¡çŒ® æ‰€ä»¥å–sigmaä¸º r / 2.57
 	float deno  =  1.0 / (sigma * sqrt(2.0 * PI));
 	float nume  = -1.0 / (2.0 * sigma * sigma);
 
-	//¸ßË¹·Ö²¼²úÉúµÄÊı×é
+	//é«˜æ–¯åˆ†å¸ƒäº§ç”Ÿçš„æ•°ç»„
 	float* gaussMatrix = (float*)malloc(sizeof(float)* (radius + radius + 1));
 	float gaussSum = 0.0;
 	for (int i = 0, x = -radius; x <= radius; ++x, ++i)
@@ -35,19 +37,19 @@ void gaussBlur1(int* pix, int w, int h, int radius)
 		gaussSum += g;
 	}
 
-	//¹é1»°
+	//å½’1è¯
 	int len = radius + radius + 1;
 	for (int i = 0; i < len; ++i)
 		gaussMatrix[i] /= gaussSum;
 
-	//ÁÙÊ±´æ´¢ Ò»ĞĞµÄÊı¾İ
+	//ä¸´æ—¶å­˜å‚¨ ä¸€è¡Œçš„æ•°æ®
 	int* rowData  = (int*)malloc(w * sizeof(int));
 	int* listData = (int*)malloc(h * sizeof(int));
 
-	//x·½ÏòµÄÄ£ºı
+	//xæ–¹å‘çš„æ¨¡ç³Š
 	for (int y = 0; y < h; ++y)
 	{
-		//¿½±´Ò»ĞĞÊı¾İ
+		//æ‹·è´ä¸€è¡Œæ•°æ®
 		memcpy(rowData, pix + y * w, sizeof(int) * w);
 
 		for (int x = 0; x < w; ++x)
@@ -61,7 +63,7 @@ void gaussBlur1(int* pix, int w, int h, int radius)
 
 				if (0 <= k && k <= w)
 				{
-					//µÃµ½ÏñËØµãµÄrgbÖµ
+					//å¾—åˆ°åƒç´ ç‚¹çš„rgbå€¼
 					int color = rowData[k];
 					int cr = (color & 0x00ff0000) >> 16;
 					int cg = (color & 0x0000ff00) >> 8;
@@ -85,7 +87,7 @@ void gaussBlur1(int* pix, int w, int h, int radius)
 
 	for (int x = 0; x < w; ++x)
 	{
-		//¿½±´ Ò»ÁĞ Êı¾İ
+		//æ‹·è´ ä¸€åˆ— æ•°æ®
 		for (int y = 0; y < h; ++y)
 			listData[y] = pix[y * w + x];
 
@@ -121,7 +123,7 @@ void gaussBlur1(int* pix, int w, int h, int radius)
 		}
 	}
 
-	//ÇåÀíÄÚ´æ
+	//æ¸…ç†å†…å­˜
 	free(gaussMatrix);
 	free(rowData);
 	free(listData);
@@ -130,23 +132,23 @@ void gaussBlur1(int* pix, int w, int h, int radius)
 
 
 ////////////////////////////////////////////////////////////
-//ÀûÓÃ3¸ö¾ùÖµÄ£ºı ÄâºÏ ¸ßË¹Ä£ºı
-//²Î¿¼£ºhttp://blog.ivank.net/fastest-gaussian-blur.html
-//ºáÏòµÄ¾ùÖµÄ£ºı srcPix£ºÔ­Ê¼µÄÏñËØÖµ destPix½«´¦Àí¹ıµÄÏñËØÖµ·ÅÈëµ½ destPixÖĞ 
+//åˆ©ç”¨3ä¸ªå‡å€¼æ¨¡ç³Š æ‹Ÿåˆ é«˜æ–¯æ¨¡ç³Š
+//å‚è€ƒï¼šhttp://blog.ivank.net/fastest-gaussian-blur.html
+//æ¨ªå‘çš„å‡å€¼æ¨¡ç³Š srcPixï¼šåŸå§‹çš„åƒç´ å€¼ destPixå°†å¤„ç†è¿‡çš„åƒç´ å€¼æ”¾å…¥åˆ° destPixä¸­ 
 void boxBlurH(int* srcPix, int* destPix, int w, int h, int radius)
 {
-	//ÓÃÓÚË÷Òı
+	//ç”¨äºç´¢å¼•
 	int index;
 
-	//r g bÔÚ±éÀúÊÇ ÀÛ¼ÓµÄÉ«²ÊÍ¨µÀµÄ×ÜºÍ
+	//r g båœ¨éå†æ˜¯ ç´¯åŠ çš„è‰²å½©é€šé“çš„æ€»å’Œ
 	int a = 0, r = 0, g = 0, b = 0;
-	int ta, tr, tg, tb;	//ÁÙÊ±±äÁ¿
+	int ta, tr, tg, tb;	//ä¸´æ—¶å˜é‡
 
-	//ÁÙÊ±±äÁ¿
+	//ä¸´æ—¶å˜é‡
 	int color;
 	int preColor;
 
-	//ÓÃÓÚ¼ÆËãÈ¨Öµ 1 / num
+	//ç”¨äºè®¡ç®—æƒå€¼ 1 / num
 	int num;
 	float iarr;
 
@@ -161,7 +163,7 @@ void boxBlurH(int* srcPix, int* destPix, int w, int h, int radius)
 
 		for (int j = 0; j < radius; j++)
 		{
-			//ÀÛ¼Ó0,radius-1µÄÉ«²ÊµÄ×ÜºÍ
+			//ç´¯åŠ 0,radius-1çš„è‰²å½©çš„æ€»å’Œ
 			color = srcPix[index + j];
 			//a += (color & 0xff000000) >> 24;
 			r += (color & 0x00ff0000) >> 16;
@@ -169,7 +171,7 @@ void boxBlurH(int* srcPix, int* destPix, int w, int h, int radius)
 			b += (color & 0x000000ff);
 		}
 
-		//ÕæÕı¿ªÊ¼¼ÆËã
+		//çœŸæ­£å¼€å§‹è®¡ç®—
 		for (int j = 0; j <= radius; ++j)
 		{
 			num++;
@@ -233,18 +235,18 @@ void boxBlurH(int* srcPix, int* destPix, int w, int h, int radius)
 }
 
 
-//ÁĞµÄ¾ùÖµÄ£ºı srcPix£ºÔ­Ê¼µÄÏñËØÖµ destPix½«´¦Àí¹ıµÄÏñËØÖµ·ÅÈëµ½ destPixÖĞ 
+//åˆ—çš„å‡å€¼æ¨¡ç³Š srcPixï¼šåŸå§‹çš„åƒç´ å€¼ destPixå°†å¤„ç†è¿‡çš„åƒç´ å€¼æ”¾å…¥åˆ° destPixä¸­ 
 void boxBlurV(int* srcPix, int* destPix, int w, int h, int radius)
 {
-	//r g bÔÚ±éÀúÊÇ ÀÛ¼ÓµÄÉ«²ÊÍ¨µÀµÄ×ÜºÍ
+	//r g båœ¨éå†æ˜¯ ç´¯åŠ çš„è‰²å½©é€šé“çš„æ€»å’Œ
 	int a = 0, r = 0, g = 0, b = 0;
-	int ta, tr, tg, tb;	//ÁÙÊ±±äÁ¿
+	int ta, tr, tg, tb;	//ä¸´æ—¶å˜é‡
 
-	//ÁÙÊ±±äÁ¿
+	//ä¸´æ—¶å˜é‡
 	int color;
 	int preColor;
 
-	//ÓÃÓÚ¼ÆËãÈ¨Öµ 1 / num
+	//ç”¨äºè®¡ç®—æƒå€¼ 1 / num
 	int num;
 	float iarr;
 
@@ -329,8 +331,8 @@ void boxBlur(int* srcPix, int* destPix, int w, int h, int r)
 	boxBlurV(destPix, srcPix, w, h, r);
 }
 
-//ÁìÓÃn ¸ö box ÄâºÏ sigmaµÄ¸ßË¹º¯Êı
-//²Î¿¼£ºhttp://www.csse.uwa.edu.au/~pk/research/pkpapers/FastGaussianSmoothing.pdf
+//é¢†ç”¨n ä¸ª box æ‹Ÿåˆ sigmaçš„é«˜æ–¯å‡½æ•°
+//å‚è€ƒï¼šhttp://www.csse.uwa.edu.au/~pk/research/pkpapers/FastGaussianSmoothing.pdf
 void boxesForGauss(float sigma, int* size, int n)
 {
 	float wIdeal = sqrt(12.0 * sigma * sigma / n + 1.0);
@@ -350,12 +352,12 @@ void boxesForGauss(float sigma, int* size, int n)
 
 void gaussBlur2(int* pix, int w, int h, int r)
 {
-	float sigma = 1.0 * r / 2.57;	//2.57 *sigam°ë¾¶Ö®ºó»ù±¾Ã»ÓĞ¹±Ï× ËùÒÔÈ¡sigmaÎª r / 2.57
+	float sigma = 1.0 * r / 2.57;	//2.57 *sigamåŠå¾„ä¹‹ååŸºæœ¬æ²¡æœ‰è´¡çŒ® æ‰€ä»¥å–sigmaä¸º r / 2.57
 
 	int boxSize = 3;
-	int* boxR = (int*)malloc(sizeof(int) * boxSize);	//ĞèÒªµÄ¸öÊı
+	int* boxR = (int*)malloc(sizeof(int) * boxSize);	//éœ€è¦çš„ä¸ªæ•°
 
-	//¼ÆËãÄâºÏµÄ°ë¾¶
+	//è®¡ç®—æ‹Ÿåˆçš„åŠå¾„
 	boxesForGauss(sigma, boxR, boxSize);
 
 	int* tempPix = (int*)malloc(sizeof(int) * w * h);
@@ -364,7 +366,7 @@ void gaussBlur2(int* pix, int w, int h, int r)
 	boxBlur(pix, tempPix, w, h, (boxR[1] - 1) / 2);
 	boxBlur(pix, tempPix, w, h, (boxR[2] - 1) / 2);
 
-	//ÇåÀíÄÚ´æ
+	//æ¸…ç†å†…å­˜
 	free(boxR);
 	free(tempPix);
 }
